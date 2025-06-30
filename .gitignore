@@ -1,0 +1,5 @@
+# Ignore the extracted_days folder and its contents
+/extracted_days/
+
+/MQNM2025.csv.gz
+/MQNM2025.csv(1).gz
