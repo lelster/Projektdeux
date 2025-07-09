@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nanex-Style Order Book Heatmap</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      font-family: sans-serif;
+      margin: 2rem;
+    }
+    #heatmap {
+      width: 100%;
+      height: 700px;
+      margin-top: 2rem;
+    }
+    input[type="file"] {
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h2 style="text-align:center">🔥 Nanex-Style Order Book Heatmap (L1–L10)</h2>
+  <input type="file" id="csvFile" accept=".csv">
+  <div id="heatmap"></div>
+
+  <script>
+    document.getElementById('csvFile').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      Papa.parse(file, {
+        header: true,
+        dynamicTyping: true,
+        complete: function (results) {
+          const data = results.data;
+          const z = [];
+          const x = [];
+          const y = [];
+          const midLine = [];
+
+          data.forEach((row, rowIndex) => {
+            const timestamp = `${row['Date']} ${row['Time']}`;
+            let bestBid = parseFloat(row['L1-BidPrice']);
+            let bestAsk = parseFloat(row['L1-AskPrice']);
+            if (!isNaN(bestBid) && !isNaN(bestAsk)) {
+              midLine.push({ x: timestamp, y: (bestBid + bestAsk) / 2 });
+            }
+
+            for (let level = 1; level <= 10; level++) {
+              const bidP = parseFloat(row[`L${level}-BidPrice`]);
+              const bidS = parseFloat(row[`L${level}-BidSize`] || 0);
+              const askP = parseFloat(row[`L${level}-AskPrice`]);
+              const askS = parseFloat(row[`L${level}-AskSize`] || 0);
+
+              if (!isNaN(bidP) && !isNaN(bidS)) {
+                x.push(timestamp);
+                y.push(bidP);
+                z.push(bidS);
+              }
+
+              if (!isNaN(askP) && !isNaN(askS)) {
+                x.push(timestamp);
+                y.push(askP);
+                z.push(askS);
+              }
+            }
+          });
+
+          const heatmapTrace = {
+            x: x,
+            y: y,
+            z: z,
+            type: 'densitymapbox',
+            type: 'heatmap',
+            colorscale: 'Jet',
+            zsmooth: false,
+            colorbar: { title: 'Depth Size', tickfont: { color: 'white' } },
+          };
+
+          const midTrace = {
+            x: midLine.map(p => p.x),
+            y: midLine.map(p => p.y),
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Mid Price',
+            line: { color: 'white', width: 1 },
+          };
+
+          Plotly.newPlot('heatmap', [heatmapTrace, midTrace], {
+            paper_bgcolor: 'black',
+            plot_bgcolor: 'black',
+            title: { text: 'Order Book Heatmap (L1–L10)', font: { color: 'white' } },
+            xaxis: { title: 'Time', color: 'white', type: 'category' },
+            yaxis: { title: 'Price', autorange: 'reversed', color: 'white' },
+            legend: { font: { color: 'white' } }
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>

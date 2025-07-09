@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bid/Ask Chart Viewer</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 2rem;
+    }
+    #chart {
+      width: 100%;
+      height: 600px;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <h2>📈 L1 Bid/Ask Chart Viewer</h2>
+  <input type="file" id="fileInput" accept=".csv" />
+  <div id="chart"></div>
+
+  <script>
+    document.getElementById("fileInput").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        dynamicTyping: true,
+        complete: (results) => {
+          drawChart(results.data);
+        },
+      });
+    });
+
+    function drawChart(data) {
+      const timestamps = [];
+      const bids = [];
+      const asks = [];
+
+      for (const row of data) {
+        const date = row["Date"]?.trim();     // Format: MM/DD/YYYY or DD/MM/YYYY
+        const time = row["Time"]?.trim();     // Format: HH:MM:SS(.sss)
+        const bid = parseFloat(row["L1-BidPrice"]);
+        const ask = parseFloat(row["L1-AskPrice"]);
+
+        if (!date || !time || isNaN(bid) || isNaN(ask)) continue;
+
+        // Convert to ISO format
+        const [month, day, year] = date.split(/[\/\.]/);
+        const isoTime = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${time}`;
+        const timestamp = new Date(isoTime);
+
+        if (isNaN(timestamp.getTime())) continue;
+
+        timestamps.push(timestamp);
+        bids.push(bid);
+        asks.push(ask);
+      }
+
+      if (!timestamps.length) {
+        alert("❌ No valid data found.");
+        return;
+      }
+
+      const bidTrace = {
+        x: timestamps,
+        y: bids,
+        mode: "lines",
+        name: "L1-Bid",
+        line: { color: "green" },
+      };
+
+      const askTrace = {
+        x: timestamps,
+        y: asks,
+        mode: "lines",
+        name: "L1-Ask",
+        line: { color: "red" },
+      };
+
+      const layout = {
+        title: "L1 Bid/Ask Chart",
+        xaxis: { title: "Time" },
+        yaxis: { title: "Price" },
+        legend: { orientation: "h" },
+      };
+
+      Plotly.newPlot("chart", [bidTrace, askTrace], layout);
+    }
+  </script>
+</body>
+</html>
